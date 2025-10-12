@@ -32,7 +32,7 @@ int write_csr_arrays(const char *prefix,int n,const int *ia, const int *ja, cons
   for (int k=0; k<nnz; ++k) fprintf(fja, "%d\n", ja[k]);
 
   // a: nnz doubles (format scientifique pour sécurité)
-  for (int k=0; k<nnz; ++k) fprintf(fa, "%.17g\n", a[k]);
+  for (int k=0; k<nnz; ++k) fprintf(fa, "%.15f\n", a[k]);
 
   fclose(fia); fclose(fja); fclose(fa);
   return 1;

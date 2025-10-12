@@ -83,12 +83,12 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
             double y = (iy + 1) * h;
 
             /* If the node is inside the hole: make an identity row and skip neighbors */
-//            if (in_hole(x, y)) {
- //               (*a)[nnz]  = 1.0;
-  //              (*ja)[nnz] = ind;   /* self-column */
-   //             nnz++;
-    //            continue;
-     //       }
+           if (in_hole(x, y)) {
+                (*a)[nnz]  = 1.0;
+                (*ja)[nnz] = ind;   /* self-column */
+                nnz++;
+                continue;
+            }
    
             /* SOUTH neighbor (iy-1) if valid and not in hole */
             if (iy > 0) {
