@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 {
   /* déclarer les variables */
 
-  int m = 100, nev = 1;
+  int m = 8, nev = 1;
   int n, *ia, *ja; 
   double *a;
   double *evals, *evecs;
