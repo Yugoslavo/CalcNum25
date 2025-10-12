@@ -2,11 +2,6 @@
 #include <stdio.h>
 #include <math.h>
 
-/* inside-rectangle test for the hole */
-static inline int in_hole(double x, double y) {
-    return (x > 1.5 && x < 3.5 && y > 2.0 && y < 3.5);
-}
-
 int prob(int m, int *n, int **ia, int **ja, double **a)
 /*
    But
@@ -41,17 +36,11 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
 */
 {
     int  nnz, ix, iy, nx, ind = 0;
+    double invh2;
 
-    nx = m - 2;                 /* nœuds de Dirichlet ne sont pas pris en compte */
-
-    /* geometry: (0,3.5)x(0,3.5) */
-    double L = 3.5;
-    double h = L / (m - 1);
-    double invh2 = 1.0 / (h*h);
-
-    //invh2 = (m-1)*(m-1);    /* h^-2 pour L=3.5 */
-    
-    *n  = nx * nx;              /* nombre d'inconnues */
+    nx = m - 2; /* nœuds de Dirichlet ne sont pas pris en compte */
+    invh2 = (m-1)*(m-1); /* h^-2 pour L=1 */
+    *n  = nx * nx; /* nombre d'inconnues */
     nnz = 5 * nx * nx - 4 * nx; /* nombre d'éléments non nuls */
 
     /* allocation des tableaux */
@@ -69,7 +58,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
 
     /* partie principale : remplissage de la matrice */
 
-    nnz = 0; /*element non nul*/ 
+    nnz = 0;
     for (iy = 0; iy < nx; iy++) {
         for (ix = 0; ix < nx; ix++) {
             /* numéro de l'équation */
@@ -77,66 +66,37 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
 
             /* marquer le début de la ligne suivante dans le tableau 'ia' */
             (*ia)[ind] = nnz;
-
-            /* physical coords of this interior node */
-            double x = (ix + 1) * h;
-            double y = (iy + 1) * h;
-
-            /* If the node is inside the hole: make an identity row and skip neighbors */
-           if (in_hole(x, y)) {
-                (*a)[nnz]  = 1.0;
-                (*ja)[nnz] = ind;   /* self-column */
-                nnz++;
-                continue;
-            }
    
-            /* SOUTH neighbor (iy-1) if valid and not in hole */
-            if (iy > 0) {
-                double xs = x;
-                double ys = (iy    ) * h;      /* iy-1 -> (iy)*h on interior indexing */
-                if (!in_hole(xs, ys)) {
-                    (*a)[nnz]  = -invh2;
-                    (*ja)[nnz] = ind - nx;
-                    nnz++;
-                }
+            /* remplissage de la ligne : voisin sud */
+            if (iy > 0)  {
+                (*a)[nnz] = -invh2; /* pour D=1 */
+                (*ja)[nnz] = ind - nx;
+                nnz++;
             }
 
-            /* WEST neighbor (ix-1) */
-            if (ix > 0) {
-                double xw = (ix    ) * h;
-                double yw = y;
-                if (!in_hole(xw, yw)) {
-                    (*a)[nnz]  = -invh2;
-                    (*ja)[nnz] = ind - 1;
-                    nnz++;
-                }
+            /* remplissage de la ligne : voisin ouest */
+            if (ix > 0)  {
+                (*a)[nnz] = -invh2; /* pour D=1 */
+                (*ja)[nnz] = ind - 1;
+                nnz++;
             }
-
             /* remplissage de la ligne : élément diagonal */
             (*a)[nnz] = 4.0*invh2; /* pour D=1 */
             (*ja)[nnz] = ind;
             nnz++;
 
-            /* EAST neighbor (ix+1) */
+            /* remplissage de la ligne : voisin est */
             if (ix < nx - 1) {
-                double xe = (ix + 2) * h;
-                double ye = y;
-                if (!in_hole(xe, ye)) {
-                    (*a)[nnz]  = -invh2;
-                    (*ja)[nnz] = ind + 1;
-                    nnz++;
-                }
+                (*a)[nnz] = -invh2; /* pour D=1 */
+                (*ja)[nnz] = ind + 1;
+                nnz++;
             }
 
-            /* NORTH neighbor (iy+1) */
+            /* remplissage de la ligne : voisin nord */
             if (iy < nx - 1) {
-                double xn = x;
-                double yn = (iy + 2) * h;
-                if (!in_hole(xn, yn)) {
-                    (*a)[nnz]  = -invh2;
-                    (*ja)[nnz] = ind + nx;
-                    nnz++;
-                }
+                (*a)[nnz] = -invh2; /* pour D=1 */
+                (*ja)[nnz] = ind + nx;
+                nnz++;
             }
         }
     }
