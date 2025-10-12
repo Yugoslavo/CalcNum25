@@ -1,9 +1,9 @@
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "prob.h"
 #include "time.h"
 #include "interface_primme.h"
+#include "csr_io.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,8 +19,11 @@ int main(int argc, char *argv[])
   if (prob(m, &n, &ia, &ja, &a))
      return 1;
 
+   /* Copier la matrice CSR*/
+   if  (!write_csr_arrays("Mat_CSR",n,ia,ja,a)) return 1;
   printf("\nPROBLÈME: ");
   printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
+  
   
   /* allouer la mémoire pour vecteurs & valeurs propres */
   evals = malloc(nev * sizeof(double));

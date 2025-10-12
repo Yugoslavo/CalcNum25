@@ -38,9 +38,12 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
     int  nnz, ix, iy, nx, ind = 0;
     double invh2;
 
-    nx = m - 2; /* nœuds de Dirichlet ne sont pas pris en compte */
-    invh2 = (m-1)*(m-1); /* h^-2 pour L=1 */
-    *n  = nx * nx; /* nombre d'inconnues */
+    /* Dans mon cas L = 3.5*/
+    int L = 3.5;
+
+    nx = m - 2;                 /* nœuds de Dirichlet ne sont pas pris en compte */
+    invh2 = (m-1)*(m-1)/L*L;    /* h^-2 pour L=3.5 */
+    *n  = nx * nx;              /* nombre d'inconnues */
     nnz = 5 * nx * nx - 4 * nx; /* nombre d'éléments non nuls */
 
     /* allocation des tableaux */
@@ -58,7 +61,10 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
 
     /* partie principale : remplissage de la matrice */
 
-    nnz = 0;
+
+    /* Si x > 3.5 et y>2 alors a = 0 */
+
+    nnz = 0; /*element non nul*/ 
     for (iy = 0; iy < nx; iy++) {
         for (ix = 0; ix < nx; ix++) {
             /* numéro de l'équation */
