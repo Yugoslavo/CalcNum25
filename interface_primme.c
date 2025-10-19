@@ -4,7 +4,6 @@
 /* variables statiques -- accessibles  */
 static double *a;
 static int n, *ia, *ja;
-
 void matvec_primme(void *vx, void *vy, int *blockSize, primme_params *primme)
 /*
    But
@@ -41,6 +40,7 @@ void matvec_primme(void *vx, void *vy, int *blockSize, primme_params *primme)
 
 int primme(int primme_n, int *primme_ia, int *primme_ja, double *primme_a, 
            int nev, double *evals, double *evecs)
+
 
 /*
    But
@@ -107,3 +107,9 @@ int primme(int primme_n, int *primme_ia, int *primme_ja, double *primme_a,
 
     return 0;
 }
+/*
+{
+    int valp = evals[0];
+    int vecp = evecs[0];
+}
+*/

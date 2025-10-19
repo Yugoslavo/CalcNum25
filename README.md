@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+Juste pour comparer au code original
+
 static inline int in_hole(double x, double y) {
     return (x >= 1.5 && x <= 3.5 && y >= 2.0 && y <= 3.5);
 }
