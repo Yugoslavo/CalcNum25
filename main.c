@@ -4,11 +4,13 @@
 #include "time.h"
 #include "interface_primme.h"
 #include "csr_io.h"
+#include "plotflux.h"
 #include <math.h>
 
 
+
 /*Fonction pour produit matrice vecteur Av*/
-/*J'ai préferé ne pas utiliser matvec_primme pour pour ne pas devoir initialiser les var*/
+/*J'ai préferé ne pas utiliser matvec_primme pour  ne pas devoir initialiser les var*/
 void matvec_csr(int n, const int *ia, const int *ja, const double *a,
                 const double *x, double *y) {
   for (int i = 0; i < n; ++i) {
@@ -17,6 +19,7 @@ void matvec_csr(int n, const int *ia, const int *ja, const double *a,
     y[i] = s;
   }
 }
+
 /* Norm et produit scalaire,  finalement pas utilisé*/
 double dot(int n, const double *x, const double *y) {
   double s = 0.0;
@@ -43,12 +46,11 @@ double residual_ratio(int n, const int *ia, const int *ja, const double *a, cons
   return sqrt(num) / sqrt(den);
 }
 
-
 int main(int argc, char *argv[])
 {
   /* déclarer les variables */
 
-  int m = 8, nev = 1;
+  int m = 30, nev = 1;
   int n, *ia, *ja; 
   double *a;
   double *evals, *evecs;
@@ -90,19 +92,21 @@ int main(int argc, char *argv[])
   /* Affichage de la val propre et vecteur propre*/
   
   /* Affichage de la plus petite propre des valeurs propres */
-  for (int k = 0; k < nev; ++k) {
+  for (int k = 0; k < nev; ++k) { 
       printf("eval[%d] = %.15g\n", k, evals[k]);
   }
   /* Affichage des 24 premieres valeurs du vecteur propre */
+
+  
   int head = (n <= 24) ? n : 24;
   printf("taille du vecteur propre : %d \n",n);
   for (int i = 0; i < head; ++i) {
       printf("evec0[%d] = %.6e\n", i, evecs[i]);  // evecs contient le vecteur 0 en tête
   }
   
-  
+
   /*Initialiser les vecteur et val prop*/
-  const double *v0 = evecs;
+  const double *v0 = evecs; /*Vecteur propre*/
   double bheta0 = evals[0];
   double *y = (double*)malloc((size_t)n * sizeof(double));
   matvec_csr(n, ia, ja, a, v0, y); /*Output y = Av0*/
@@ -110,6 +114,45 @@ int main(int argc, char *argv[])
   printf("Résidu relatif  ||Av0 - bheta*v0|| / ||v0|| = %.3e\n", res);
   free(y);
 
+  /*Calcul des dimentions pour cas stationnaire*/
+  /*Alpha étant l'homothétie a realiser pour ajuster la valeur propre a 4*/
+  double beta2 = 4;
+  double lam = evals[0];
+  double alpha = sqrt(lam/beta2);
+  printf("Les dimentions fois alpha = %.3e\n",alpha); 
+  /*La valeur de h doit varier, en fixant m, h' = alpha*h */
+  double h = 3.5/(m - 1);
+  printf("Nouveau pad : h' = %.3e\n Ancien pad h = %3.e \n", h*alpha, h);
+
+  /*Plot grace a gnuplot*/
+  const double Lx = alpha*3.5, Ly = alpha*3.5;
+  /*Normalisation pour optimiser l'affichage*/
+
+  double maxabs = 0.0;
+  for(int k = 0 ; k < n; ++k) if (fabs(evecs[k])>maxabs) maxabs = fabs(evecs[k]); /*fabs retourne la valeur absolue*/
+  if (maxabs > 0 ) for (int k = 0;k<n;++k) evecs[k] /= maxabs;
+  
+  double *phiB = (double*)malloc((size_t)(m+2)*(m+2)*sizeof(double));
+  if (!phiB) {fprintf(stderr,"OOM\n");return 1;}
+  
+  decompress_to_with_borders(evecs, m, Lx, Ly, phiB);
+  /*
+  build_borders(evecs, m, phiB);
+  mask_hole_inplace(phiB, m, Lx, Ly);
+  */
+  if (plot_phi(phiB, m, Lx, Ly, "Mode propre fondamental", "m") != 0) {
+    fprintf(stderr, "gnuplot introuvable ?\n");
+}
+
+free(phiB);
+
+  /*
+  int phiB_len = (m+2)*(m+2);
+  int head = (phiB_len < 200) ? phiB_len : 10;
+  for (int i = 0; i < 110; ++i) {
+      printf("phiB[%d] = %.6e\n", i, phiB[i]);  // evecs contient le vecteur 0 en tête
+  } 
+  */
 
   /* libérer la mémoire */
   free(ia); free(ja); free(a); free(evals); free(evecs);

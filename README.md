@@ -30,7 +30,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a) {
             if (in_hole(x, y)) map[ind] = -1;   // DOF supprimé
             else               map[ind] = rows++;
         }
-    }
+
     *n = rows;
     if (*n == 0) { free(map); return 1; }
 

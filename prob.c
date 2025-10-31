@@ -7,6 +7,7 @@ static inline int in_hole(double x, double y) {
 }
 
 int prob(int m, int *n, int **ia, int **ja, double **a)
+
 /*
    But
    ===
@@ -49,7 +50,7 @@ int prob(int m, int *n, int **ia, int **ja, double **a)
         double h = L / (m - 1);
         invh2 = 1.0 / (h*h);
 
-        /* ---- Pass 1 : renumérotation compacte (suppression des DOF du trou) ---- */
+        /* renumérotation compacte (suppression des DOF du trou) */
         int Ngrid = nx * nx;
         int *map = (int*)malloc((size_t)Ngrid * sizeof(int));
         if (!map) return 1;
