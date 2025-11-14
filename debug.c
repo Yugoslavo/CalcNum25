@@ -9,6 +9,8 @@ Et puis si j'ai le temps je vais créer une autre fonction pour comparer
 */
 int write_csr_arrays(const char *prefix,int n,const int *ia, const int *ja, const double *a){
     char f_ia[256], f_ja[256],f_a[256];
+
+    
     snprintf(f_ia,sizeof f_ia, "%s_ia.txt",prefix);
     snprintf(f_ja,sizeof f_ja, "%s_ja.txt",prefix);
     snprintf(f_a,sizeof f_a, "%s_a.txt", prefix);

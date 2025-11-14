@@ -6,12 +6,13 @@
 #include "csr_io.h"
 #include "plotflux.h"
 #include <math.h>
+#include "eulerprog.h"
 
 
 
 /*Fonction pour produit matrice vecteur Av*/
 /*J'ai préferé ne pas utiliser matvec_primme pour  ne pas devoir initialiser les var*/
-void matvec_csr(int n, const int *ia, const int *ja, const double *a,
+static void matvec_csr(int n, const int *ia, const int *ja, const double *a,
                 const double *x, double *y) {
   for (int i = 0; i < n; ++i) {
     double s = 0.0;
@@ -49,29 +50,28 @@ double residual_ratio(int n, const int *ia, const int *ja, const double *a, cons
 int main(int argc, char *argv[])
 {
   /* déclarer les variables */
+  double beta2 = 4;
+  double lam = 2.949094; /*Jai enlevé evals[0] pour linstant*/
+  double alpha = sqrt(lam/beta2) ; /*sqrt(lam/beta2)*/
 
-  int m = 30, nev = 1;
+  int m = 90, nev = 1;
   int n, *ia, *ja; 
   double *a;
   double *evals, *evecs;
   double tc1, tc2, tw1, tw2;
 
   /* générer le problème */
-  if (prob(m, &n, &ia, &ja, &a))
+  if (prob(m, alpha ,&n, &ia, &ja, &a))
      return 1;
 
    /* Copier la matrice CSR*/
-   if  (!write_csr_arrays("Mat_CSR",n,ia,ja,a)) return 1;
+  if  (!write_csr_arrays("Mat_CSR",n,ia,ja,a)) return 1;
   printf("\nPROBLÈME: ");
   printf("m = %5d   n = %8d  nnz = %9d\n", m, n, ia[n] );
   
-
-
-
-  
   /* allouer la mémoire pour vecteurs & valeurs propres */
-  evals = malloc(nev * sizeof(double));
-  evecs = malloc(nev * n * sizeof(double));
+  evals = calloc(nev, sizeof(double));
+  evecs = calloc(nev * n, sizeof(double));
 
   if (evals == NULL || evecs == NULL) {
       printf("\n ERREUR : pas assez de mémoire pour les vecteurs et valeurs propres\n\n");
@@ -96,14 +96,12 @@ int main(int argc, char *argv[])
       printf("eval[%d] = %.15g\n", k, evals[k]);
   }
   /* Affichage des 24 premieres valeurs du vecteur propre */
-
   
   int head = (n <= 24) ? n : 24;
   printf("taille du vecteur propre : %d \n",n);
   for (int i = 0; i < head; ++i) {
       printf("evec0[%d] = %.6e\n", i, evecs[i]);  // evecs contient le vecteur 0 en tête
-  }
-  
+  }  
 
   /*Initialiser les vecteur et val prop*/
   const double *v0 = evecs; /*Vecteur propre*/
@@ -116,47 +114,63 @@ int main(int argc, char *argv[])
 
   /*Calcul des dimentions pour cas stationnaire*/
   /*Alpha étant l'homothétie a realiser pour ajuster la valeur propre a 4*/
-  double beta2 = 4;
-  double lam = evals[0];
-  double alpha = sqrt(lam/beta2);
+
   printf("Les dimentions fois alpha = %.3e\n",alpha); 
   /*La valeur de h doit varier, en fixant m, h' = alpha*h */
   double h = 3.5/(m - 1);
   printf("Nouveau pad : h' = %.3e\n Ancien pad h = %3.e \n", h*alpha, h);
 
   /*Plot grace a gnuplot*/
-  const double Lx = alpha*3.5, Ly = alpha*3.5;
+  const double Lx = 3.5, Ly = 3.5;
+
   /*Normalisation pour optimiser l'affichage*/
+  
+  //double maxabs = 0.0;
+  //for(int k = 0 ; k < n; ++k) if (fabs(evecs[k])>maxabs) maxabs = fabs(evecs[k]); /*fabs retourne la valeur absolue*/
+  //if (maxabs > 0 ) for (int k = 0;k<n;++k) evecs[k] /= maxabs; /*Tout diviser par le max*/
+  //printf("maxabs : %d \n",maxabs);
 
   double maxabs = 0.0;
-  for(int k = 0 ; k < n; ++k) if (fabs(evecs[k])>maxabs) maxabs = fabs(evecs[k]); /*fabs retourne la valeur absolue*/
-  if (maxabs > 0 ) for (int k = 0;k<n;++k) evecs[k] /= maxabs;
-  
-  double *phiB = (double*)malloc((size_t)(m+2)*(m+2)*sizeof(double));
-  if (!phiB) {fprintf(stderr,"OOM\n");return 1;}
-  
-  decompress_to_with_borders(evecs, m, Lx, Ly, phiB);
-  /*
-  build_borders(evecs, m, phiB);
-  mask_hole_inplace(phiB, m, Lx, Ly);
-  */
-  if (plot_phi(phiB, m, Lx, Ly, "Mode propre fondamental", "m") != 0) {
-    fprintf(stderr, "gnuplot introuvable ?\n");
-}
+  int pmax = 0;
+  for (int p = 0; p < n; ++p) {
+      double ap = fabs(evecs[p]);
+      if (ap > maxabs) { maxabs = ap; pmax = p; }
+  }
+  if (maxabs > 0.0) {
+    for (int p = 0; p < n; ++p) evecs[p] /= maxabs; // scale to [-1,1]
+  }
+  // flip so the peak is positive
+  if (evecs[pmax] < 0.0) for (int p = 0; p < n; ++p) evecs[p] = -evecs[p];
+  printf("maxabs : %.6e\n", maxabs);
 
-free(phiB);
+  printf("taille du vecteur propre : %d \n",n);
+  for (int i = 0; i < head; ++i) {
+      printf("evec0[%d] = %.6e\n", i, evecs[i]);  // evecs contient le vecteur 0 en tête
+  }
 
-  /*
-  int phiB_len = (m+2)*(m+2);
-  int head = (phiB_len < 200) ? phiB_len : 10;
-  for (int i = 0; i < 110; ++i) {
-      printf("phiB[%d] = %.6e\n", i, phiB[i]);  // evecs contient le vecteur 0 en tête
-  } 
-  */
+/*Approximation avec euler prog*/
+double lam2 = 8.0/(alpha*h*alpha*h);
+double dt = 2/(300*(lam2-beta2));
+int it = 3000;
+double *phi_init = (double*)malloc(n*sizeof(double));
+for(int i = 0; i < n ; ++i)phi_init[i] = 1.0;w
+
+double *phi_prog = (double*)malloc(n*sizeof(double));
+
+euler_prog(n, ia, ja, a, beta2,  it,  dt,
+     phi_init,  phi_prog);
+
+double *Z = malloc(sizeof(double)*m*m);
+/*Decompresser le vecteur phi en Z de taille mm*/
+decompress(phi_prog, m, alpha, 3.5, Z);
+/*Ecrire sur format TXT pour etre lut par gp*/  
+write_phi("phiB.txt", Z, m, alpha,3.5,3.5);
+
+plot_phi("phiB.txt", m, alpha,3.5,3.5, "Mode fondamental", 0);
+
 
   /* libérer la mémoire */
-  free(ia); free(ja); free(a); free(evals); free(evecs);
+  free(ia); free(ja); free(a); free(evals); free(evecs); free(Z);
   return 0;
   
 }
-

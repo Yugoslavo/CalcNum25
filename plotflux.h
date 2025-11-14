@@ -1,8 +1,13 @@
-void decompress_to_with_borders(
-    const double *evec_compact, int m, double Lx, double Ly,
-    double *phiB_out
-);
-static inline int idx_border(int i, int j, int nx); 
-static inline int idx_interior(int i, int j, int m); 
-static inline int in_hole(double x, double y); 
-int plot_phi(const double *phiB, int m, double Lx, double Ly, const char *title, const char *unit_label);
+#ifndef PLOTFLUX_H
+#define PLOTFLUX_H
+int   in_hole(double x, double y, double alpha);
+int   build_map(int m, double alpha, double Lx, int *map);
+void  decompress(const double *evec,
+                                  int m, double alpha, double Lx,
+                                  double *Z);
+int   write_phi(const char *path, const double *Z, int m,
+                            double alpha, double Lx, double Ly);
+int   plot_phi(const char *path, int m, double alpha, double Lx, double Ly,
+                const char *title, int as3d);
+
+#endif
