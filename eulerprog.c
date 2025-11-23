@@ -13,11 +13,11 @@ static void matvec_csr(int n, const int *ia, const int *ja, const double *a,
 }
 /*Euler Progressif*/
 void euler_prog(int n, const int *ia, const int *ja, const double *a,
-    double bheta2, int it, double h,
+    double bheta2, int it, double dt,
     double *phi_init, double *phi_prog){
 
     int tau = 300;
-    double c = tau * h;
+    double c = tau * dt;
 
    double *y = (double*)malloc((size_t)n*sizeof(double));
    double *phi = (double*)malloc((size_t)n*sizeof(double));

@@ -76,7 +76,7 @@ int write_phi(const char *path, const double *Z, int m,
     fclose(f);
     return 0;
 }
-/*Option plot Heatmap et 3D*/
+/*Option plot Heatmap et 3D et */
 int plot_phi(const char *path, int m, double alpha, double Lx, double Ly,
               const char *title, int as3d)
 {
@@ -95,6 +95,7 @@ int plot_phi(const char *path, int m, double alpha, double Lx, double Ly,
     fprintf(gp, "set pm3d corners2color median\n");
     fprintf(gp, "set pm3d interpolate 1,1\n");
     fprintf(gp, "set palette rgb 33,13,10\n");
+    fprintf(gp, "set cbrange [0:1]\n");
     fprintf(gp, "set xlabel 'x (%s)'\n", "m");
     fprintf(gp, "set ylabel 'y (%s)'\n", "m");
     fprintf(gp, "set zlabel 'phi (%s)'\n", "a.u.");
