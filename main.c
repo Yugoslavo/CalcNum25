@@ -1,13 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "prob.h"
-#include "time.h"
+#include <math.h>
+#include "prob.h"          
+#include "time.h"          
 #include "interface_primme.h"
 #include "csr_io.h"
 #include "plotflux.h"
-#include <math.h>
 #include "eulerprog.h"
+#include "arpack_interface.h"
+#include <arpack/arpack.h>
+#include "jadamilu_interface.h"
 
+
+/* =========================================
+                Question 2
+   =========================================
+*/
 /*Calcul du résidus*/
 double residual_ratio(int n, const int *ia, const int *ja, const double *a, const double *v, double bheta){
   double *Av = (double*)malloc((size_t)n * sizeof(double));
@@ -21,6 +29,10 @@ double residual_ratio(int n, const int *ia, const int *ja, const double *a, cons
   }
   free(Av);
   return sqrt(num) / sqrt(den);
+
+/*
+   =========================================
+*/
 }
 
 int main(int argc, char *argv[])
@@ -28,27 +40,60 @@ int main(int argc, char *argv[])
 
   /* déclarer les variables */
   double beta2 = 4.0;
-  int m = 90, nev = 1;
+  int m = 60, nev = 1;
   double h = 3.5/(m - 1);
   int n, *ia, *ja; 
   double *a;
   double *evals = calloc(nev, sizeof(double));
   double *evecs = calloc((size_t)nev *  (size_t)/*n après prob*/ 1, sizeof(double)); // pas oublier de réalluer aprés prob
+  double *evals2 = calloc(nev, sizeof(double));
+  double *evecs2 = calloc((size_t)nev *  (size_t)/*n après prob*/ 1, sizeof(double)); // pas oublier de réalluer aprés prob
+
+/* =========================================
+                Question 3
+   =========================================
+*/
 
   /*Sollution pour alpha = 1*/
   double alpha = 1.0;
   if (prob(m, alpha, &n, &ia, &ja, &a)) return 1;
   evecs = realloc(evecs, (size_t)nev * (size_t)n * sizeof(double));
-  if (primme(n, ia, ja, a, nev, evals, evecs)) return 1;
-  double lam = evals[0];
+  
+  
+  evecs2 = realloc(evecs2, (size_t)nev * (size_t)n * sizeof(double));
+  if (primme(n, ia, ja, a, nev, evals2, evecs2)) return 1;
 
+  int nconv = 0;
+  int err = arpackSym(
+      n, ia, ja, a,
+      /* nev */ 1,
+      /* ncv */ 0,          
+      /* tol */ 1e-10,      
+      /* maxit */ 1000,
+      /* which */ "SA",    
+      evals, evecs,
+      &nconv
+  );
+
+  if (err) { fprintf(stderr, "Erreur ARPACK (%d)\n", err); return 1; }
+  
+  printf("Valeur prop ARPACK = %.12g\n Valeur Prop primme = %.12g \n", evals[0], evals2[0]);
+  
+  double lam = evals[0];
   /*Nouvel alpha critique*/
   double alpha_crit = sqrt(lam / beta2); /*Mettre a 1 pour le test 1 et m = 8*/
   printf("lambda1(alpha = 1) = %.12g => alpha_crit %.12g \n", lam, alpha_crit);
 
   free(ia); free(ja); free(a); 
   double tc1, tc2, tw1, tw2;
+/*
+   =========================================
+*/
 
+/* =========================================
+                Question 6
+   =========================================
+*/
   /* générer le problème */
   if (prob(m, alpha_crit ,&n, &ia, &ja, &a)) return 1;
   evecs = realloc(evecs, (size_t)nev * (size_t)n * sizeof(double));
@@ -66,17 +111,36 @@ int main(int argc, char *argv[])
 
   /* primme - résolution */
   tc1 = mytimer_cpu(); tw1 = mytimer_wall();
-  if(primme(n, ia, ja, a, nev, evals, evecs))
-     return 1;
+  if(primme(n, ia, ja, a, nev, evals2, evecs2)) return 1;
+
+  nconv = 0; /*réutilisée*/
+  err = arpackSym(
+      n, ia, ja, a,
+      /* nev  */ nev,
+      /* ncv  */ 0,
+      /* tol  */ 1e-10,
+      /* it   */ 1000,
+      /* which*/ "SA",
+      evals, evecs,
+      &nconv
+  );
+
+
+
+  if (err) { fprintf(stderr, "ARPACK failed (%d)\n", err); return 1; }
+  printf("#converged = %d, lambda1 = %.12g\n", nconv, evals[0]);
   tc2 = mytimer_cpu(); tw2 = mytimer_wall();
 
   /* temps de solution */
   printf("\nTemps de solution (CPU): %5.1f sec",tc2-tc1);
   printf("\nTemps de solution (horloge): %5.1f sec \n",tw2-tw1);
-  printf("\nValeur propre minimale calculée: %5.1f\n",evals[0]);
+  printf("\nValeur propre arpack: %5.1f et primme %5.1f\n" ,evals[0], evals2[0]);
   printf("Check: lambda1(alpha_crit) = %.12g (cible = %.12g)\n", evals[0], beta2); /*Comparaison avec lambda*/
 
-  
+/*
+   =========================================
+*/
+
   /* Affichage de la plus petite propre des valeurs propres */
   for (int k = 0; k < nev; ++k) { 
       printf("eval[%d] = %.15g\n", k, evals[k]);
@@ -99,7 +163,6 @@ int main(int argc, char *argv[])
   printf("Nouveau pad : h' = %.3e\n Ancien pad h = %3.e \n", h*alpha_crit, h);
 
   /*Normalisation pour optimiser l'affichage*/
-
   double maxabs = 0.0;
   int pmax = 0;
   for (int p = 0; p < n; ++p) {
@@ -113,8 +176,11 @@ int main(int argc, char *argv[])
   printf("maxabs : %.6e\n", maxabs);
 
 
+/* =========================================
+                Question 5
+   =========================================
+*/
 /*Boucle avec les scénarios possible en variant alpha_crit*/
-
 double scales[] = {0.99,1.01};
 for (int si = 0; si < 2; ++si){
   double alpha_run = scales[si] * alpha_crit;
@@ -135,7 +201,7 @@ for (int si = 0; si < 2; ++si){
   double Delta = fabs(beta2 - lam1_run);
   double R = 2.0; // 2 car flux double
   double Ttarget = log(R) / (300.0 * fmax(Delta, 1e-12));
-  int it = (int)ceil(Ttarget / dt);
+  int it = (int)ceil(Ttarget / dt); 
 
 
   double *phi_init = (double*)malloc(n*sizeof(double));
@@ -155,7 +221,14 @@ for (int si = 0; si < 2; ++si){
   free(Z);
   free(phi_init); free(phi_prog);
 } 
+/*
+   =========================================
+*/
 
+/* =========================================
+                Question 4
+   =========================================
+*/
   double *Z = (double*)malloc((size_t)m*(size_t)m*sizeof(double));
   decompress(evecs, m, alpha_crit, 3.5, Z);
   write_phi("evecs.txt", Z, m, alpha_crit, 3.5, 3.5);
@@ -165,6 +238,10 @@ for (int si = 0; si < 2; ++si){
 
   /* libérer la mémoire */
   free(ia); free(ja); free(a); free(evals); free(evecs); free(Z);
+  free(evals2); free(evecs2);
   return 0;
   
 }
+/*
+   =========================================
+*/

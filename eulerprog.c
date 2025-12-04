@@ -2,14 +2,13 @@
 #include <string.h> /*memcpy*/
 #include <math.h>
 /*Calcul matriciel*/
-static void matvec_csr(int n, const int *ia, const int *ja, const double *a,
+void matvec_csr(int n, const int *ia, const int *ja, const double *a,
                 const double *x, double *y) { /*y = Av*/
   for (int i = 0; i < n; ++i) {
     double s = 0.0;
     for (int p = ia[i]; p < ia[i+1]; ++p) s += a[p] * x[ ja[p] ];
     y[i] = s;
   }
-
 }
 /*Euler Progressif*/
 void euler_prog(int n, const int *ia, const int *ja, const double *a,

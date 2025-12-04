@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+/* =========================================
+                Question 1
+   =========================================
+*/
 /* test “point dans le trou” (coordonnées physiques) */
 static inline int in_hole(double x, double y, double alpha) {
     return (x >= 1.5*alpha && x <= 3.5*alpha &&
