@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
      * Mais le code pour ARPACK est totalement fontionnel, je l'ai pas effacé par peine
      * =========================================
      */ 
-
+    /*A présent on utilise uniquement la géometrie aprés homothétie*/
     if (prob(m, alpha_crit, &n, &ia, &ja, &a)) {
         fprintf(stderr, "ERREUR: prob(m, alpha_crit)\n");
         return 1;
@@ -252,14 +252,14 @@ int main(int argc, char *argv[])
     free(y);
 
     /* =========================================
-     * Question 3 : dimensions pour cas stationnaire
+     * Question 3 : dimensions pour cas stationnaire, alpha_crit calculé précedement
      * =========================================
      */
     printf(" dimensions critique alpha_crit = %.3e\n", alpha_crit);
     printf("Nouveau pas : h' = %.3e\nAncien pas : h  = %.3e\n",
            h * alpha_crit, h);
 
-    /* Normalisation pour affichage */
+    /* Normalisation pour meilleur affichage pour les question 4 et 5*/
     double fluxmax = 0.0;
     int pmax = 0;
     for (int p = 0; p < n; ++p) {
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
         for (int p = 0; p < n; ++p)
             evecs[p] = -evecs[p];
     }
-    printf("fluxmax : %.6e\n", fluxmax);
+    printf("flux maximal : %.6e\n", fluxmax);
 
     /* =========================================
      * Question 5 : Euler progressif,
