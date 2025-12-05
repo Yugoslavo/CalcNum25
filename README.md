@@ -64,3 +64,6 @@ Ensuite, j’ai également intégré JADAMILU, un solveur spécialisé pour matr
 
 La comparaison avec PRIMME montre une excellente cohérence des résultats.
 ARPACK reste pleinement fonctionnel dans mon projet, mais n’est plus utilisé comme solveur principal.
+
+OBSERVATION :
+Veuillez ignorer tous les fichiers .txt, qui ont été utilisés uniquement pour le débogage, à l’exception des fichiers Mat_CSR_alpha.txt et Mat_CSR_alpha_crit.txt, qui contiennent respectivement la matrice CSR pour α et pour α_crit.
