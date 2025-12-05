@@ -1,86 +1,66 @@
-#include <stdlib.h>
-#include <stdio.h>
+Guide de lecture du projet et ligne directrice
 
-Juste pour comparer au code original
+Ce document accompagne mon code et explique, question par question, les choix effectués ainsi que la logique générale du projet. Il complète la présentation orale.
 
-static inline int in_hole(double x, double y) {
-    return (x >= 1.5 && x <= 3.5 && y >= 2.0 && y <= 3.5);
-}
+QUESTION 1 – Génération de la matrice A (prob.c)
 
-int prob(int m, int *n, int **ia, int **ja, double **a) {
-    if (m < 3) return 1;
+La majeure partie du travail pour cette question se trouve dans le fichier prob.c, où j’ai adapté le code pour gérer la géométrie fournie dans l’énoncé.
 
-    int ix, iy, nx = m - 2;
-    int Ngrid = nx * nx;
+J’ai choisi d’utiliser un système de mapping (similaire à un dictionnaire en Python) afin d’associer chaque point intérieur de la grille à son indice lexicographique. Cette approche rend le code plus clair, flexible et évite les cas particuliers.
 
-    double L = 3.5;                    // adapte selon ton domaine
-    double h = L / (m - 1);
-    double invh2 = 1.0 / (h*h);
+L’objectif était également de conserver une flexibilité totale : si les paramètres de la fonction in_hole() sont modifiés pour définir une autre géométrie ou un autre niveau de raffinement, la matrice CSR est automatiquement recalculée sans autre changement.
 
-    // --- Pass 1: mapping des DOF valides
-    int *map = (int*)malloc((size_t)Ngrid * sizeof(int));
-    if (!map) return 1;
+Pour faciliter le débogage, j’ai ajouté la fonction write_csr_arrays dans debug.c, permettant de visualiser la structure CSR de la matrice générée.
 
-    int rows = 0;
-    for (iy = 0; iy < nx; ++iy) {
-        for (ix = 0; ix < nx; ++ix) {
-            int ind = ix + nx*iy;
-            double x = (ix + 1) * h;
-            double y = (iy + 1) * h;
-            if (in_hole(x, y)) map[ind] = -1;   // DOF supprimé
-            else               map[ind] = rows++;
-        }
+QUESTION 2 – Calcul du résidu relatif
 
-    *n = rows;
-    if (*n == 0) { free(map); return 1; }
+Cette question a été traitée dans main.c via la fonction residual_ratio.
 
-    // --- Compter nnz exactement
-    int nnz = 0;
-    for (iy = 0; iy < nx; ++iy) {
-        for (ix = 0; ix < nx; ++ix) {
-            int ind = ix + nx*iy;
-            int r = map[ind];
-            if (r < 0) continue;       // nœud supprimé
+La fonction calcule efficacement le résidu relatif ||AΦ − β²Φ||₂ / ||Φ||₂ en optimisant les accès mémoire dans la structure CSR, ce qui est essentiel pour respecter les critères d’efficacité demandés dans l’énoncé.
 
-            nnz += 1;                  // diagonale
-            if (iy > 0   && map[ind-nx] >= 0) ++nnz;  // S
-            if (ix > 0   && map[ind-1]  >= 0) ++nnz;  // W
-            if (ix < nx-1&& map[ind+1]  >= 0) ++nnz;  // E
-            if (iy < nx-1&& map[ind+nx] >= 0) ++nnz;  // N
-        }
-    }
+L’implémentation reste concise et intuitive.
 
-    // --- Allocation CSR
-    *ia = (int*)   malloc((size_t)(*n + 1) * sizeof(int));
-    *ja = (int*)   malloc((size_t)nnz       * sizeof(int));
-    *a  = (double*)malloc((size_t)nnz       * sizeof(double));
-    if (!*ia || !*ja || !*a) {
-        free(map); free(*ia); free(*ja); free(*a);
-        *ia = NULL; *ja = NULL; *a = NULL;
-        return 1;
-    }
+QUESTION 3 – Calcul du facteur critique alpha_crit et homothétie
 
-    // --- Pass 2: remplissage CSR (ordre S, W, diag, E, N)
-    int k = 0;
-    for (iy = 0; iy < nx; ++iy) {
-        for (ix = 0; ix < nx; ++ix) {
-            int ind = ix + nx*iy;
-            int r = map[ind];
-            if (r < 0) continue;
+Pour cette partie, j’utilise le solveur PRIMME pour calculer la plus petite valeur propre de la matrice A associée à la géométrie de base.
 
-            (*ia)[r] = k;
+Comme demandé dans l’énoncé, j’ai introduit un facteur d’homothétie alpha, appliqué directement dans la génération de la matrice :
 
-            if (iy > 0)   { int c = map[ind - nx]; if (c >= 0) { (*a)[k] = -invh2; (*ja)[k] = c; ++k; } } // S
-            if (ix > 0)   { int c = map[ind - 1 ]; if (c >= 0) { (*a)[k] = -invh2; (*ja)[k] = c; ++k; } } // W
+Au début, alpha = 1 pour déterminer la valeur propre β² associée à ma géométrie brute.
 
-            (*a)[k] = 4.0*invh2; (*ja)[k] = r; ++k;                                                     // diag
+J’en déduis ensuite la valeur alpha_critique, c’est-à-dire le facteur d’homothétie permettant d’obtenir un réacteur stationnaire.
 
-            if (ix < nx-1){ int c = map[ind + 1 ]; if (c >= 0) { (*a)[k] = -invh2; (*ja)[k] = c; ++k; } } // E
-            if (iy < nx-1){ int c = map[ind + nx]; if (c >= 0) { (*a)[k] = -invh2; (*ja)[k] = c; ++k; } } // N
-        }
-    }
-    (*ia)[*n] = k;
+Toutes mes fonctions (notamment dans prob.c) acceptent ce facteur alpha comme paramètre, ce qui me permet de recalculer facilement la matrice pour n’importe quelle géométrie homothétique.
 
-    free(map);
-    return 0;
-}
+Grâce à cette approche, j’ai pu vérifier que pour alpha = alpha_crit, la plus petite valeur propre vaut bien 4, avec un résidu relatif inférieur à 1e-9, confirmant l’exactitude du calcul.
+
+QUESTION 4 – Visualisation graphique du flux stationnaire
+
+Pour cette question, j’ai utilisé gnuplot via des pipes ("gp") comme suggéré dans l’énoncé.
+
+La difficulté principale était de rendre le flux phi compatible avec le format attendu par gnuplot. Ce traitement est encapsulé dans plotflux.c, où le flux est reconstruit sur la grille complète, y compris au bord, comme demandé.
+
+J’ai vérifié que le mode propre fondamental respecte bien les conditions de Dirichlet.
+
+QUESTION 5 – Résolution temporelle par Euler progressive
+
+La fonction dans eulerprog.c implémente la méthode d’Euler progressive pour résoudre le problème de Cauchy discrétisé.
+
+Le pas de temps et le nombre d’itérations sont choisis de manière à rendre l’évolution du flux clairement visible, notamment lorsque l’amplitude du flux double.
+
+J’ai représenté :
+
+un cas surcritique (alpha = alpha_crit × 1.01),
+
+un cas souscritique (alpha = alpha_crit × 0.99).
+
+J’ai choisi de tracer ces deux cas statiquement plutôt qu’en animation, pour une présentation plus lisible et moins coûteuse en mémoire.
+
+QUESTION 6 – Solveur alternatif (ARPACK / JADAMILU)
+
+J’ai d’abord implémenté une interface avec ARPACK, qui fonctionne correctement pour ma matrice.
+
+Ensuite, j’ai également intégré JADAMILU, un solveur spécialisé pour matrices creuses symétriques. Finalement, j’ai choisi d’utiliser JADAMILU pour cette question car il exploite mieux la structure creuse, converge rapidement et ne nécessite que la partie triangulaire supérieure de la matrice.
+
+La comparaison avec PRIMME montre une excellente cohérence des résultats.
+ARPACK reste pleinement fonctionnel dans mon projet, mais n’est plus utilisé comme solveur principal.

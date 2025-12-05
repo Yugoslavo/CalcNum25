@@ -24,16 +24,17 @@ double residual_ratio(int n,
                       const double *v,
                       double beta)
 {
+
     double *Av = (double*)malloc((size_t)n * sizeof(double));
     if (!Av) {
-        fprintf(stderr, "ERREUR: malloc(Av) dans residual_ratio\n");
+        fprintf(stderr, "ERREUR: malloc(Av) \n");
         return -1.0; /* OOM */
     }
 
     matvec_csr(n, ia, ja, a, v, Av);
 
-    double num = 0.0;
-    double den = 0.0;
+    double num = 0.0; /*numérateur*/
+    double den = 0.0; /*dénominateur*/
 
     for (int i = 0; i < n; ++i) {
         double r = Av[i] - beta * v[i];
@@ -96,7 +97,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERREUR: prob(m, alpha=1)\n");
         return 1;
     }
-
+    /*Avec un m=8 je peut retrouver la matrice donnée dans lénoncé grace a 
+        if (!write_csr_arrays("Mat_CSR_1", n, ia, ja, a)) {
+        fprintf(stderr, "ERREUR: write_csr_arrays\n");
+        return 1;
+    }
+    */
     evecs  = (double*)malloc((size_t)nev * (size_t)n * sizeof(double));
     evecs2 = (double*)malloc((size_t)nev * (size_t)n * sizeof(double));
     if (!evecs || !evecs2) {
@@ -109,7 +115,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERREUR: primme(alpha=1)\n");
         return 1;
     }
-
+    
     printf("Valeur propre PRIMME (alpha=1) = %.12g\n", evals2[0]);
 
     double lam = evals2[0];
@@ -148,7 +154,7 @@ int main(int argc, char *argv[])
     }
 
 /* debuger PROB*/
-    if (!write_csr_arrays("Mat_CSR", n, ia, ja, a)) {
+    if (!write_csr_arrays("Mat_CSR_crit", n, ia, ja, a)) {
         fprintf(stderr, "ERREUR: write_csr_arrays\n");
         return 1;
     }
@@ -165,7 +171,7 @@ int main(int argc, char *argv[])
     tc1 = mytimer_cpu();
     tw1 = mytimer_wall();
 
-    if (primme(n, ia, ja, a, nev, evals2, evecs2)) {
+    if (primme(n, ia, ja, a, nev, evals2, evecs)) {
         fprintf(stderr, "ERREUR: primme(alpha_crit)\n");
         return 1;
     }
@@ -179,7 +185,7 @@ int main(int argc, char *argv[])
         /* tol  */ 1e-10,
         /* it   */ 1000,
         /* which*/ "SA",
-        evals, evecs,
+        evals, evecs2,
         &nconv
     );
 
@@ -197,12 +203,6 @@ int main(int argc, char *argv[])
                        evals_jada,
                        evecs_jada)) {
         fprintf(stderr, "JADAMILU a échoué\n");
-        free(evecs_jada);
-        return 1;
-    }
-
-    if (err) {
-        fprintf(stderr, "ARPACK failed (%d)\n", err);
         free(evecs_jada);
         return 1;
     }
@@ -317,7 +317,6 @@ int main(int argc, char *argv[])
             fprintf(stderr, "ERREUR: malloc(phi_init/phi_prog)\n");
             free(phi_init);
             free(phi_prog);
-            free(evecs_jada);
             return 1;
         }
 
@@ -332,7 +331,6 @@ int main(int argc, char *argv[])
             fprintf(stderr, "ERREUR: malloc(Z)\n");
             free(phi_init);
             free(phi_prog);
-            free(evecs_jada);
             return 1;
         }
 
