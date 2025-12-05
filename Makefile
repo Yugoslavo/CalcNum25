@@ -15,7 +15,7 @@ ARPACK_PATH := /usr/local
 # include <arpack/arpack.h>
 ARPACK_INC := -I$(ARPACK_PATH)/include
 
-# --- JADAMILU et ILUPACK 
+# JADAMILU et ILUPACK 
 
 JADAMILU_DIR := ../JADAMILU
 ARCHCOMP     := INT32GNU
@@ -29,13 +29,14 @@ JADAMILU_LIBDIR := $(JADAMILU_DIR)/lib/$(ARCHCOMP)
 # lib jadamilu + dépendances AMD/SuiteSparse
 JADAMILU_LIBS := -L$(JADAMILU_LIBDIR) -ljadamilu -lamd -lsuitesparseconfig
 
-# objets MC64 / MC21 compilés
-JADAMILU_MC_OBJS := \
-    $(JADAMILU_LIBDIR)/mc64s.o \
-    $(JADAMILU_LIBDIR)/mc21s.o
-#	
 
-INCP := $(PRIMME_PATH) $(ARPACK_INC) $(JADAMILU_INC)
+INCP := $(PRIMME_PATH) $(ARPACK_INC) $(JADAMILU_INC)	
+
+JADAMILU_MC_OBJS := \
+    $(JADAMILU_LIBDIR)/mc64d.o \
+    $(JADAMILU_LIBDIR)/mc64s.o \
+    $(JADAMILU_LIBDIR)/ddeps.o \
+    $(JADAMILU_LIBDIR)/sdeps.o
 
 # Librairies
 ARPACK_LIB := $(ARPACK_PATH)/lib/libarpack.a
@@ -50,13 +51,13 @@ LIB := $(PRIMME_LIB) $(ARPACK_LIB) \
 default: main
 
 #Les objects
-OBJS := main.o prob.o time.o interface_primme.o arpack_interface.o debug.o plotflux.o eulerprog.o 
+OBJS := main.o prob.o time.o interface_primme.o arpack_interface.o debug.o plotflux.o eulerprog.o jadamilu_interface.o
 
 
 main: $(OBJS)
 	$(CC) $(COPT) $^ -o $@ $(LIB)
 
-main.o: main.c prob.h time.h interface_primme.h arpack_interface.h csr_io.h plotflux.h eulerprog.h
+main.o: main.c prob.h time.h interface_primme.h arpack_interface.h csr_io.h plotflux.h eulerprog.h jadamilu_interface.h
 	$(CC) $(COPT) -c $< -o $@ $(INCP)
 
 %.o: %.c %.h
